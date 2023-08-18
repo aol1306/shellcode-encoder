@@ -94,7 +94,7 @@ fn gen_csharp_output(v: Vec<u8>) -> String {
 
     if lines.len() > 0 {
         ret.push_str(&format!("byte[] buf = new byte[{shellcode_len}] {{{first_line},\n"));
-        ret.push_str(&lines.iter().join("\n"));
+        ret.push_str(&lines.iter().join(",\n"));
         ret.push_str("};");
     } else {
         ret.push_str(&format!("byte[] buf = new byte[{shellcode_len}] {{{first_line}}};"));
