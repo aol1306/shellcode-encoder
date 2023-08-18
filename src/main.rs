@@ -181,12 +181,10 @@ Next i"
     )
 }
 
-// TODO
 fn get_decoding_ps1_xor(key: u8) -> String {
     format!(r"$buf = $buf | % {{ ($_ -bxor {key}) -band 0xff }}")
 }
 
-// TODO
 fn get_decoding_ps1_rot(key: u8) -> String {
     format!(r"$buf = $buf | % {{ ($_ - {key}) -band 0xff }}")
 }
