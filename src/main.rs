@@ -21,7 +21,7 @@ struct Args {
     key: u8,
 
     /// Print decoding routine
-    #[arg(short, long, default_value_t = true)]
+    #[arg(short, long, default_value_t = false)]
     decoding_routine: bool
 }
 
