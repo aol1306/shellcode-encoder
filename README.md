@@ -34,3 +34,7 @@ View help:
 ```sh
 shellcode-encoder --help
 ```
+
+## Tips
+
+- Any bin file can be easily converted to the required hex format by piping it to `hexdump -ve '1/1 "%.2x"'`.
