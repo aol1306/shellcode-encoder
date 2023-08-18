@@ -22,7 +22,7 @@ struct Args {
 
     /// Print decoding routine
     #[arg(short, long, default_value_t = false)]
-    decoding_routine: bool
+    decoding_routine: bool,
 }
 
 #[derive(ValueEnum, Debug, Clone)]
@@ -30,6 +30,7 @@ enum Format {
     C,
     Csharp,
     Vbapplication,
+    Ps1,
 }
 
 #[derive(ValueEnum, Debug, Clone)]
@@ -80,11 +81,8 @@ fn gen_csharp_output(v: Vec<u8>) -> String {
 
     let mapped = v.iter().map(|x| format!("0x{:02x?}", x));
 
-    let first_line = mapped
-        .clone()
-        .take(6)
-        .join(",");
-    
+    let first_line = mapped.clone().take(6).join(",");
+
     let lines = mapped
         .skip(6)
         .chunks(12)
@@ -92,12 +90,16 @@ fn gen_csharp_output(v: Vec<u8>) -> String {
         .map(|mut chunk| chunk.join(","))
         .collect::<Vec<_>>();
 
-    if lines.len() > 0 {
-        ret.push_str(&format!("byte[] buf = new byte[{shellcode_len}] {{{first_line},\n"));
+    if !lines.is_empty() {
+        ret.push_str(&format!(
+            "byte[] buf = new byte[{shellcode_len}] {{{first_line},\n"
+        ));
         ret.push_str(&lines.iter().join(",\n"));
         ret.push_str("};");
     } else {
-        ret.push_str(&format!("byte[] buf = new byte[{shellcode_len}] {{{first_line}}};"));
+        ret.push_str(&format!(
+            "byte[] buf = new byte[{shellcode_len}] {{{first_line}}};"
+        ));
     }
 
     ret
@@ -117,51 +119,76 @@ fn gen_vbapplication_output(v: Vec<u8>) -> String {
     ret.push_str("Dim buf As Variant\n");
     ret.push_str("buf = Array(");
     ret.push_str(&lines.iter().join(", _\n"));
-    ret.push_str(")");
+    ret.push(')');
+
+    ret
+}
+
+fn gen_ps1_output(v: Vec<u8>) -> String {
+    let mut ret = String::new();
+
+    ret.push_str("[Byte[]] $buf = ");
+    ret.push_str(&v.iter().map(|x| format!("0x{:02x?}", x)).join(","));
 
     ret
 }
 
 fn get_decoding_c_xor(key: u8) -> String {
     format!(
-r"for (int i = 0; i < (sizeof buf - 1); i++) {{
+        r"for (int i = 0; i < (sizeof buf - 1); i++) {{
     buf[i] = buf[i] ^ {key};
-}}")
+}}"
+    )
 }
 
 fn get_decoding_c_rot(key: u8) -> String {
     format!(
-r"for (int i = 0; i < (sizeof buf - 1); i++) {{
+        r"for (int i = 0; i < (sizeof buf - 1); i++) {{
     buf[i] = (buf[i] - {key}) & 0xff;
-}}")
+}}"
+    )
 }
 
 fn get_decoding_csharp_xor(key: u8) -> String {
     format!(
-r"for (int i = 0; i < buf.Length; i++) {{
+        r"for (int i = 0; i < buf.Length; i++) {{
     buf[i] = (byte)(buf[i] ^ {key});
-}}")
+}}"
+    )
 }
 
 fn get_decoding_csharp_rot(key: u8) -> String {
     format!(
-r"for (int i = 0; i < buf.Length; i++) {{
+        r"for (int i = 0; i < buf.Length; i++) {{
     buf[i] = (byte)((buf[i] - {key}) & 0xff);
-}}")
+}}"
+    )
 }
 
 fn get_decoding_vbapplication_xor(key: u8) -> String {
     format!(
-r"For i = 0 To UBound(buf)
+        r"For i = 0 To UBound(buf)
     buf(i) = buf(i) Xor {key}
-Next i")
+Next i"
+    )
 }
 
 fn get_decoding_vbapplication_rot(key: u8) -> String {
     format!(
-r"For i = 0 To UBound(buf)
+        r"For i = 0 To UBound(buf)
     buf(i) = buf(i) - {key}
-Next i")
+Next i"
+    )
+}
+
+// TODO
+fn get_decoding_ps1_xor(key: u8) -> String {
+    format!(r"$buf = $buf | % {{ ($_ -bxor {key}) -band 0xff }}")
+}
+
+// TODO
+fn get_decoding_ps1_rot(key: u8) -> String {
+    format!(r"$buf = $buf | % {{ ($_ - {key}) -band 0xff }}")
 }
 
 fn main() {
@@ -190,19 +217,27 @@ fn main() {
                 Format::C => gen_c_output(encoded),
                 Format::Csharp => gen_csharp_output(encoded),
                 Format::Vbapplication => gen_vbapplication_output(encoded),
+                Format::Ps1 => gen_ps1_output(encoded),
             };
             println!("{}", output);
 
             if args.decoding_routine {
                 eprintln!();
-                eprintln!("{}", match (&args.format, &args.encoder) {
-                    (&Format::C, &Encoder::Xor) => get_decoding_c_xor(args.key),
-                    (&Format::C, &Encoder::Rot) => get_decoding_c_rot(args.key),
-                    (&Format::Csharp, &Encoder::Xor) => get_decoding_csharp_xor(args.key),
-                    (&Format::Csharp, &Encoder::Rot) => get_decoding_csharp_rot(args.key),
-                    (&Format::Vbapplication, &Encoder::Xor) => get_decoding_vbapplication_xor(args.key),
-                    (&Format::Vbapplication, &Encoder::Rot) => get_decoding_vbapplication_rot(args.key),
-                });
+                eprintln!(
+                    "{}",
+                    match (&args.format, &args.encoder) {
+                        (&Format::C, &Encoder::Xor) => get_decoding_c_xor(args.key),
+                        (&Format::C, &Encoder::Rot) => get_decoding_c_rot(args.key),
+                        (&Format::Csharp, &Encoder::Xor) => get_decoding_csharp_xor(args.key),
+                        (&Format::Csharp, &Encoder::Rot) => get_decoding_csharp_rot(args.key),
+                        (&Format::Vbapplication, &Encoder::Xor) =>
+                            get_decoding_vbapplication_xor(args.key),
+                        (&Format::Vbapplication, &Encoder::Rot) =>
+                            get_decoding_vbapplication_rot(args.key),
+                        (&Format::Ps1, &Encoder::Xor) => get_decoding_ps1_xor(args.key),
+                        (&Format::Ps1, &Encoder::Rot) => get_decoding_ps1_rot(args.key),
+                    }
+                );
             }
         } else {
             eprintln!("Invalid input");

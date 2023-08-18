@@ -14,6 +14,7 @@ Supported output formats:
 - C# (csharp)
 - C (c)
 - VBA (vbapplication)
+- Powershell (ps1)
 
 ## Installation
 
