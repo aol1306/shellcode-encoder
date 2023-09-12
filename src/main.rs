@@ -135,7 +135,8 @@ fn gen_ps1_output(v: Vec<u8>) -> String {
 
 fn get_decoding_c_xor(key: u8) -> String {
     format!(
-        r"for (int i = 0; i < (sizeof buf - 1); i++) {{
+        r"int i;
+for (i = 0; i < (sizeof buf - 1); i++) {{
     buf[i] = buf[i] ^ {key};
 }}"
     )
@@ -143,7 +144,8 @@ fn get_decoding_c_xor(key: u8) -> String {
 
 fn get_decoding_c_rot(key: u8) -> String {
     format!(
-        r"for (int i = 0; i < (sizeof buf - 1); i++) {{
+        r"int i;
+for (i = 0; i < (sizeof buf - 1); i++) {{
     buf[i] = (buf[i] - {key}) & 0xff;
 }}"
     )
