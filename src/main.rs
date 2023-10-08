@@ -20,9 +20,9 @@ struct Args {
     #[arg(short, long)]
     key: u8,
 
-    /// Print decoding routine
+    /// Don't print decoding routine
     #[arg(short, long, default_value_t = false)]
-    decoding_routine: bool,
+    no_decoding_routine: bool,
 }
 
 #[derive(ValueEnum, Debug, Clone)]
@@ -221,9 +221,9 @@ fn main() {
             };
             println!("{}", output);
 
-            if args.decoding_routine {
-                eprintln!();
-                eprintln!(
+            if !args.no_decoding_routine {
+                println!();
+                println!(
                     "{}",
                     match (&args.format, &args.encoder) {
                         (&Format::C, &Encoder::Xor) => get_decoding_c_xor(args.key),
